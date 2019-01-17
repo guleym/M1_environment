@@ -1,0 +1,68 @@
+version: "3"
+services:
+
+  apache:
+    container_name: app_container
+    #build: ./docker_configuration/apache
+    image: guleym/magento_environment:apache_2.4.18
+    tty: true
+    networks:
+      backend:
+        ipv4_address: 172.28.1.10
+    volumes:
+      - ./docker_configuration/tools/shell/:/tmp/shell/
+      - ./docker_configuration/tools/n98-magerun/:/tmp/
+    environment:
+      - PHP_IDE_CONFIG=serverName=cli
+
+  varnish:
+    #build: ./docker_configuration/varnish
+    image: guleym/magento_environment:varnish_4.1.1
+    container_name: varnish_container
+    tty: true
+    volumes:
+      - ./docker_configuration/varnish/conf/default.vcl:/etc/varnish/default.vcl
+    depends_on:
+      - apache
+    ports:
+      - 80:80
+      - 6082:6082
+    networks:
+      backend:
+        ipv4_address: 172.28.1.13
+
+  elasticsearch:
+    #build: ./docker_configuration/elasticsearch
+    image: guleym/magento_environment:elasticsearch_2.3.2
+    container_name: elasticsearch_container
+    tty: true
+    depends_on:
+      - apache
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      backend:
+        ipv4_address: 172.28.1.14
+
+  db:
+    #build: ./docker_configuration/db
+    image: guleym/magento_environment:mariadb_10.2
+    container_name: db_container
+    depends_on:
+      - apache
+    volumes:
+      - ./docker_configuration/db/my.cnf:/etc/mysql/my.cnf
+      - ./docker_configuration/db:/var/www/html
+    env_file:
+      - ./docker_configuration/db/credentials.env
+    networks:
+      backend:
+        ipv4_address: 172.28.1.16
+
+networks:
+ backend:
+  ipam:
+   driver: default
+   config:
+     - subnet: 172.28.1.0/16
